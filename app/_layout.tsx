@@ -12,11 +12,9 @@ export {
 } from 'expo-router';
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
+  initialRouteName: 'index',
 };
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -24,7 +22,6 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
   }, [error]);
@@ -47,9 +44,26 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+      <Stack
+        screenOptions={{
+          headerShadowVisible: false,
+          headerTintColor: '#E8D9B8',
+          headerStyle: {
+            backgroundColor: '#1A140C',
+          },
+          headerTitleStyle: {
+            fontWeight: '700',
+            color: '#C4A35A',
+          },
+          contentStyle: {
+            backgroundColor: '#0F1A14',
+          },
+        }}>
+        <Stack.Screen name="index" options={{ title: 'Menu' }} />
+        <Stack.Screen name="statistiques" options={{ title: 'Statistiques' }} />
+        <Stack.Screen name="joueurs" options={{ title: 'Joueurs' }} />
+        <Stack.Screen name="decks" options={{ title: 'Decks' }} />
+        <Stack.Screen name="import-export" options={{ title: 'Import/Export' }} />
       </Stack>
     </ThemeProvider>
   );
