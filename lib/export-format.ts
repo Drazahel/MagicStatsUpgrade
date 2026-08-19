@@ -1,5 +1,16 @@
+import {
+  DEFAULT_GAME_TYPE,
+  isColorLetter,
+  isGameType,
+  sortColors,
+  usesCommanders,
+  type ColorLetter,
+  type GameType,
+} from '@/lib/game-types';
+
 export const APP_NAME = 'MagicStats' as const;
 export const EXPORT_FORMAT_VERSION = 1;
+export const EXPORT_SCHEMA_VERSION = 4;
 
 export type PlayerRecord = {
   id: number;
@@ -11,6 +22,7 @@ export type DeckRecord = {
   id: number;
   commanderName: string;
   commanderImageUrl: string | null;
+  colorIdentity: ColorLetter[] | null;
   playerId: number;
   createdAt: string;
 };
@@ -19,7 +31,8 @@ export type ParticipantRecord = {
   id: number;
   gameId: number;
   playerId: number;
-  deckId: number;
+  deckId: number | null;
+  colors: ColorLetter[] | null;
 };
 
 export type GameRecord = {
@@ -27,6 +40,7 @@ export type GameRecord = {
   datePlayed: string;
   winnerPlayerId: number | null;
   createdAt: string;
+  gameType: GameType;
   participants: ParticipantRecord[];
 };
 
@@ -103,9 +117,46 @@ function parseDeck(value: unknown, index: number): DeckRecord {
     id: requireId(value.id, `decks[${index}].id`),
     commanderName: requireString(value.commanderName, `decks[${index}].commanderName`),
     commanderImageUrl: image,
+    colorIdentity: parseColors(value.colorIdentity, `decks[${index}].colorIdentity`),
     playerId: requireId(value.playerId, `decks[${index}].playerId`),
     createdAt: requireString(value.createdAt, `decks[${index}].createdAt`),
   };
+}
+
+function parseColors(value: unknown, field: string): ColorLetter[] | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (!Array.isArray(value)) {
+    throw new ExportParseError(`Champ invalide : ${field}.`);
+  }
+  const letters: ColorLetter[] = [];
+  for (const item of value) {
+    if (!isColorLetter(item)) {
+      throw new ExportParseError(`Couleur invalide dans ${field}.`);
+    }
+    if (!letters.includes(item)) {
+      letters.push(item);
+    }
+  }
+  return sortColors(letters);
+}
+
+function parseOptionalId(value: unknown, field: string): number | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  return requireId(value, field);
+}
+
+function parseGameType(value: unknown, field: string): GameType {
+  if (value === undefined || value === null) {
+    return DEFAULT_GAME_TYPE;
+  }
+  if (!isGameType(value)) {
+    throw new ExportParseError(`Type de partie invalide : ${field}.`);
+  }
+  return value;
 }
 
 function parseParticipant(value: unknown, gameIndex: number, index: number): ParticipantRecord {
@@ -116,7 +167,8 @@ function parseParticipant(value: unknown, gameIndex: number, index: number): Par
     id: requireId(value.id, `games[${gameIndex}].participants[${index}].id`),
     gameId: requireId(value.gameId, `games[${gameIndex}].participants[${index}].gameId`),
     playerId: requireId(value.playerId, `games[${gameIndex}].participants[${index}].playerId`),
-    deckId: requireId(value.deckId, `games[${gameIndex}].participants[${index}].deckId`),
+    deckId: parseOptionalId(value.deckId, `games[${gameIndex}].participants[${index}].deckId`),
+    colors: parseColors(value.colors, `games[${gameIndex}].participants[${index}].colors`),
   };
 }
 
@@ -131,13 +183,20 @@ function parseGame(value: unknown, index: number): GameRecord {
   if (winner !== null && (!isFiniteNumber(winner) || !Number.isInteger(winner))) {
     throw new ExportParseError(`Champ invalide : games[${index}].winnerPlayerId.`);
   }
+  const gameType = parseGameType(value.gameType, `games[${index}].gameType`);
+  const participants = value.participants.map((participant, participantIndex) =>
+    parseParticipant(participant, index, participantIndex)
+  );
   return {
     id: requireId(value.id, `games[${index}].id`),
     datePlayed: requireString(value.datePlayed, `games[${index}].datePlayed`),
     winnerPlayerId: winner,
     createdAt: requireString(value.createdAt, `games[${index}].createdAt`),
-    participants: value.participants.map((participant, participantIndex) =>
-      parseParticipant(participant, index, participantIndex)
+    gameType,
+    participants: participants.map((participant) =>
+      usesCommanders(gameType)
+        ? { ...participant, colors: null }
+        : { ...participant, deckId: null }
     ),
   };
 }
@@ -203,8 +262,12 @@ export function parseAppExport(raw: string): AppExport {
       if (!playerIds.has(participant.playerId)) {
         throw new ExportParseError(`Le participant ${participant.id} référence un joueur inconnu.`);
       }
-      if (!deckIds.has(participant.deckId)) {
-        throw new ExportParseError(`Le participant ${participant.id} référence un deck inconnu.`);
+      if (usesCommanders(game.gameType)) {
+        if (participant.deckId === null || !deckIds.has(participant.deckId)) {
+          throw new ExportParseError(`Le participant ${participant.id} référence un deck inconnu.`);
+        }
+      } else if (participant.colors === null || participant.colors.length === 0) {
+        throw new ExportParseError(`Le participant ${participant.id} n’a pas de couleurs.`);
       }
     }
     if (game.winnerPlayerId !== null && !playerIds.has(game.winnerPlayerId)) {
@@ -227,7 +290,7 @@ export function createEmptyExport(): AppExport {
   return {
     app: APP_NAME,
     formatVersion: EXPORT_FORMAT_VERSION,
-    schemaVersion: 3,
+    schemaVersion: EXPORT_SCHEMA_VERSION,
     exportedAt: '',
     players: [],
     decks: [],
@@ -244,6 +307,7 @@ export function snapshotForExport(data: AppExport): AppExport {
     ...data,
     app: APP_NAME,
     formatVersion: EXPORT_FORMAT_VERSION,
+    schemaVersion: EXPORT_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
     players: [...data.players].sort(byId),
     decks: [...data.decks].sort(byId),

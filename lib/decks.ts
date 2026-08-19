@@ -1,5 +1,7 @@
 import { loadDb, saveDb } from '@/lib/db';
 import { type DeckRecord } from '@/lib/export-format';
+import { sortColors, type ColorLetter } from '@/lib/game-types';
+import { fetchCommanderByName } from '@/lib/scryfall';
 
 export class DeckError extends Error {
   constructor(message: string) {
@@ -11,6 +13,7 @@ export class DeckError extends Error {
 export type DeckInput = {
   commanderName: string;
   commanderImageUrl: string | null;
+  colorIdentity: ColorLetter[];
   playerId: number;
 };
 
@@ -49,7 +52,10 @@ function assertUniqueCommander(
   }
 }
 
-function deckInUse(deckId: number, games: { participants: { deckId: number }[] }[]): boolean {
+function deckInUse(
+  deckId: number,
+  games: { participants: { deckId: number | null }[] }[]
+): boolean {
   return games.some((game) =>
     game.participants.some((participant) => participant.deckId === deckId)
   );
@@ -69,6 +75,7 @@ export async function addDeck(input: DeckInput): Promise<DeckRecord> {
     id: nextId(data.decks),
     commanderName,
     commanderImageUrl: input.commanderImageUrl,
+    colorIdentity: sortColors(input.colorIdentity),
     playerId: input.playerId,
     createdAt: new Date().toISOString(),
   };
@@ -96,6 +103,7 @@ export async function updateDeck(id: number, input: DeckInput): Promise<DeckReco
     ...data.decks[index],
     commanderName,
     commanderImageUrl: input.commanderImageUrl,
+    colorIdentity: sortColors(input.colorIdentity),
     playerId: input.playerId,
   };
   data.decks = data.decks.map((deck, deckIndex) => (deckIndex === index ? updated : deck));
@@ -115,4 +123,34 @@ export async function deleteDeck(id: number): Promise<void> {
 
   data.decks = data.decks.filter((deck) => deck.id !== id);
   await saveDb(data);
+}
+
+export async function fillMissingColorIdentities(): Promise<DeckRecord[]> {
+  const data = await loadDb();
+  let changed = false;
+  const decks: DeckRecord[] = [];
+
+  for (const deck of data.decks) {
+    if (deck.colorIdentity !== null) {
+      decks.push(deck);
+      continue;
+    }
+    try {
+      const hit = await fetchCommanderByName(deck.commanderName);
+      if (hit) {
+        changed = true;
+        decks.push({ ...deck, colorIdentity: hit.colorIdentity });
+        continue;
+      }
+    } catch {
+      // Keep the deck unchanged if Scryfall is unreachable.
+    }
+    decks.push(deck);
+  }
+
+  if (changed) {
+    data.decks = decks;
+    await saveDb(data);
+  }
+  return decks;
 }

@@ -8,6 +8,7 @@ import GreenMana from '@/assets/images/svg/g.svg';
 import RedMana from '@/assets/images/svg/r.svg';
 import BlueMana from '@/assets/images/svg/u.svg';
 import WhiteMana from '@/assets/images/svg/w.svg';
+import { sortColors, type ColorLetter } from '@/lib/game-types';
 
 export type ManaColor = 'white' | 'blue' | 'black' | 'red' | 'green' | 'colorless';
 
@@ -63,6 +64,44 @@ export function ManaLogo({ size = 22 }: { size?: number }) {
     <View accessibilityRole="image" accessibilityLabel="Couleurs de mana" style={styles.logo}>
       {colors.map((mana) => (
         <ManaPip key={mana} color={mana} size={size} />
+      ))}
+    </View>
+  );
+}
+
+function letterToMana(letter: ColorLetter): ManaColor {
+  switch (letter) {
+    case 'W':
+      return 'white';
+    case 'U':
+      return 'blue';
+    case 'B':
+      return 'black';
+    case 'R':
+      return 'red';
+    case 'G':
+      return 'green';
+  }
+}
+
+export function ColorIdentityPips({
+  colors,
+  size = 18,
+}: {
+  colors: ColorLetter[] | null;
+  size?: number;
+}) {
+  if (colors === null) {
+    return null;
+  }
+
+  const pips: ManaColor[] =
+    colors.length === 0 ? ['colorless'] : sortColors(colors).map(letterToMana);
+
+  return (
+    <View accessibilityRole="image" accessibilityLabel="Identité de couleur" style={styles.logo}>
+      {pips.map((mana, index) => (
+        <ManaPip key={`${mana}-${index}`} color={mana} size={size} />
       ))}
     </View>
   );

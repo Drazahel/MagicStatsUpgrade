@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 
+import { isColorLetter, sortColors, type ColorLetter } from '@/lib/game-types';
+
 const SCRYFALL_API = 'https://api.scryfall.com';
 const MIN_QUERY_LENGTH = 2;
 const MAX_RESULTS = 5;
@@ -15,6 +17,7 @@ export class ScryfallError extends Error {
 export type CommanderHit = {
   name: string;
   imageUrl: string | null;
+  colorIdentity: ColorLetter[];
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -36,6 +39,25 @@ function imageFromCard(card: Record<string, unknown>): string | null {
   }
 
   return null;
+}
+
+function colorsFromCard(card: Record<string, unknown>): ColorLetter[] {
+  const raw = card.color_identity;
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return sortColors(raw.filter(isColorLetter));
+}
+
+function hitFromCard(card: Record<string, unknown>): CommanderHit | null {
+  if (typeof card.name !== 'string') {
+    return null;
+  }
+  return {
+    name: card.name,
+    imageUrl: imageFromCard(card),
+    colorIdentity: colorsFromCard(card),
+  };
 }
 
 let lastRequestAt = 0;
@@ -87,14 +109,22 @@ export async function searchCommanders(query: string): Promise<CommanderHit[]> {
   }
 
   return json.data.slice(0, MAX_RESULTS).flatMap((card) => {
-    if (!isRecord(card) || typeof card.name !== 'string') {
+    if (!isRecord(card)) {
       return [];
     }
-    return [
-      {
-        name: card.name,
-        imageUrl: imageFromCard(card),
-      },
-    ];
+    const hit = hitFromCard(card);
+    return hit ? [hit] : [];
   });
+}
+
+export async function fetchCommanderByName(name: string): Promise<CommanderHit | null> {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const json = await scryfallGet(`/cards/named?exact=${encodeURIComponent(trimmed)}`);
+  if (!isRecord(json) || json.object === 'error') {
+    return null;
+  }
+  return hitFromCard(json);
 }
