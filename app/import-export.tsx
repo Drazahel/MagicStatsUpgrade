@@ -1,7 +1,7 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { readAsStringAsync } from 'expo-file-system/legacy';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
@@ -64,8 +64,30 @@ async function readPickedFile(uri: string, webFile?: Blob): Promise<string> {
 export default function ImportExportRoute() {
   const [data, setData] = useState<AppExport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
+  const successTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showSuccess = useCallback((message: string) => {
+    if (successTimer.current) {
+      clearTimeout(successTimer.current);
+    }
+    setError(null);
+    setSuccess(message);
+    successTimer.current = setTimeout(() => {
+      setSuccess(null);
+      successTimer.current = null;
+    }, 4000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (successTimer.current) {
+        clearTimeout(successTimer.current);
+      }
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
     const stored = await loadDb();
@@ -85,6 +107,7 @@ export default function ImportExportRoute() {
 
   const onImport = useCallback(async () => {
     setError(null);
+    setSuccess(null);
     setBusy(true);
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -125,6 +148,9 @@ export default function ImportExportRoute() {
     setBusy(true);
     try {
       await applyImport(pendingImport.raw);
+      showSuccess(
+        `Import réussi : ${pendingImport.players} joueur(s), ${pendingImport.decks} deck(s), ${pendingImport.games} partie(s).`
+      );
       setPendingImport(null);
     } catch (err) {
       setError(
@@ -135,16 +161,20 @@ export default function ImportExportRoute() {
     } finally {
       setBusy(false);
     }
-  }, [applyImport, pendingImport]);
+  }, [applyImport, pendingImport, showSuccess]);
 
   const onExport = useCallback(async () => {
     if (!data) {
       return;
     }
     setError(null);
+    setSuccess(null);
     setBusy(true);
     try {
-      await downloadAppExport(data);
+      const result = await downloadAppExport(data);
+      if (result) {
+        showSuccess(`Export réussi : ${result.filename}`);
+      }
     } catch (err) {
       setError(
         err instanceof ExportError ? err.message : 'Impossible d’exporter les données.'
@@ -152,7 +182,7 @@ export default function ImportExportRoute() {
     } finally {
       setBusy(false);
     }
-  }, [data]);
+  }, [data, showSuccess]);
 
   const players = data?.players.length ?? 0;
   const decks = data?.decks.length ?? 0;
@@ -228,6 +258,7 @@ export default function ImportExportRoute() {
           </>
         )}
 
+        {success ? <Text style={styles.success}>{success}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
     </View>
@@ -301,6 +332,12 @@ const styles = StyleSheet.create({
     color: GOLD,
     fontSize: 17,
     fontWeight: '800',
+  },
+  success: {
+    color: '#8FCB8F',
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: '700',
   },
   error: {
     color: '#E07070',
