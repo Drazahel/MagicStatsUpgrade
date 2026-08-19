@@ -7,32 +7,39 @@ import { Text, View } from '@/components/Themed';
 
 const MENU_ITEMS = [
   {
+    title: 'Nouvelle Partie',
+    subtitle: 'Enregistre le résultat de la table, tout de suite après la partie.',
+    href: '/nouvelle-partie',
+    mana: 'red',
+    typeLine: 'Instant',
+  },
+  {
     title: 'Statistiques',
     subtitle: 'Résultats, classements et tendances de tes parties.',
     href: '/statistiques',
     mana: 'blue',
-    typeLine: 'Menu — Instant',
+    typeLine: 'Enchantment',
   },
   {
     title: 'Joueurs',
     subtitle: 'Profils et historique de chacun autour de la table.',
     href: '/joueurs',
     mana: 'white',
-    typeLine: 'Menu — Creature',
+    typeLine: 'Creature',
   },
   {
     title: 'Decks',
     subtitle: 'Tes listes et leurs performances en tournoi comme en kitchen table.',
     href: '/decks',
     mana: 'green',
-    typeLine: 'Menu — Artifact',
+    typeLine: 'Artifact',
   },
   {
     title: 'Import/Export',
     subtitle: 'Sauvegarde et échange tes données entre appareils.',
     href: '/import-export',
     mana: 'colorless',
-    typeLine: 'Menu — Sorcery',
+    typeLine: 'Sorcery',
   },
 ] as const;
 

@@ -60,6 +60,7 @@ function RootLayoutNav() {
           },
         }}>
         <Stack.Screen name="index" options={{ title: 'Menu' }} />
+        <Stack.Screen name="nouvelle-partie" options={{ title: 'Nouvelle Partie' }} />
         <Stack.Screen name="statistiques" options={{ title: 'Statistiques' }} />
         <Stack.Screen name="joueurs" options={{ title: 'Joueurs' }} />
         <Stack.Screen name="decks" options={{ title: 'Decks' }} />
