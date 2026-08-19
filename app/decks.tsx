@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 
 import { CommanderImage } from '@/components/CommanderImage';
+import { ColorIdentityPips } from '@/components/ManaPip';
 import { Text, View } from '@/components/Themed';
 import { loadDb } from '@/lib/db';
-import { addDeck, DeckError, deleteDeck, updateDeck } from '@/lib/decks';
+import { addDeck, DeckError, deleteDeck, fillMissingColorIdentities, updateDeck } from '@/lib/decks';
 import { type DeckRecord, type PlayerRecord } from '@/lib/export-format';
 import { searchCommanders, ScryfallError, type CommanderHit } from '@/lib/scryfall';
 
@@ -65,6 +66,10 @@ export default function DecksScreen() {
     const stored = await loadDb();
     setPlayers([...stored.players].sort((a, b) => a.name.localeCompare(b.name, 'fr')));
     setDecks([...stored.decks].sort(byCommander));
+    if (stored.decks.some((deck) => deck.colorIdentity === null)) {
+      const filled = await fillMissingColorIdentities();
+      setDecks([...filled].sort(byCommander));
+    }
   }, []);
 
   useEffect(() => {
@@ -142,6 +147,7 @@ export default function DecksScreen() {
       const payload = {
         commanderName: selected.name,
         commanderImageUrl: selected.imageUrl,
+        colorIdentity: selected.colorIdentity,
         playerId: ownerId,
       };
       if (editingId === null) {
@@ -168,6 +174,7 @@ export default function DecksScreen() {
     setSelected({
       name: deck.commanderName,
       imageUrl: deck.commanderImageUrl,
+      colorIdentity: deck.colorIdentity ?? [],
     });
     setQuery(deck.commanderName);
     setHits([]);
@@ -269,7 +276,10 @@ export default function DecksScreen() {
                 ) : (
                   <View style={styles.hitImageFallback} lightColor="#1A140C" darkColor="#1A140C" />
                 )}
-                <Text style={styles.hitName}>{hit.name}</Text>
+                <View style={styles.hitMeta} lightColor="transparent" darkColor="transparent">
+                  <Text style={styles.hitName}>{hit.name}</Text>
+                  <ColorIdentityPips colors={hit.colorIdentity} size={20} />
+                </View>
               </Pressable>
             ))}
 
@@ -279,6 +289,7 @@ export default function DecksScreen() {
                   <CommanderImage uri={selected.imageUrl} style={styles.previewImage} />
                 ) : null}
                 <Text style={styles.playerName}>{selected.name}</Text>
+                <ColorIdentityPips colors={selected.colorIdentity} size={22} />
               </View>
             ) : null}
 
@@ -366,6 +377,7 @@ export default function DecksScreen() {
               )}
               <View style={styles.deckMeta} lightColor="transparent" darkColor="transparent">
                 <Text style={styles.playerName}>{deck.commanderName}</Text>
+                <ColorIdentityPips colors={deck.colorIdentity} size={18} />
                 <Text style={styles.owner}>{playerName(players, deck.playerId)}</Text>
               </View>
             </View>
@@ -486,9 +498,12 @@ const styles = StyleSheet.create({
   },
   hitName: {
     color: CREAM,
-    flex: 1,
     fontSize: 16,
     fontWeight: '700',
+  },
+  hitMeta: {
+    flex: 1,
+    gap: 8,
   },
   preview: {
     alignItems: 'center',
