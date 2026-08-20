@@ -1,8 +1,9 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { ColorIdentityPicker } from '@/components/ColorIdentityPicker';
+import { Crown } from '@/components/Crown';
 import { ColorIdentityPips } from '@/components/ManaPip';
 import { Text, View } from '@/components/Themed';
 import { loadDb } from '@/lib/db';
@@ -20,9 +21,11 @@ import {
 } from '@/lib/game-types';
 import {
   addGame,
+  formatDatePlayed,
   GameError,
   lastReplayableTable,
   MIN_GAME_PLAYERS,
+  updateGame,
   type GameSeat,
   type LastTable,
 } from '@/lib/games';
@@ -75,8 +78,17 @@ function sameTable(
 }
 
 export default function NouvellePartieScreen() {
+  const router = useRouter();
+  const navigation = useNavigation();
+  const params = useLocalSearchParams<{ gameId?: string | string[] }>();
+  const rawGameId = Array.isArray(params.gameId) ? params.gameId[0] : params.gameId;
+  const parsedId = rawGameId === undefined ? Number.NaN : Number(rawGameId);
+  const editingId = Number.isInteger(parsedId) ? parsedId : null;
+  const isEditing = editingId !== null;
+
   const [step, setStep] = useState<'type' | 'result'>('type');
   const [gameType, setGameType] = useState<GameType>(DEFAULT_GAME_TYPE);
+  const [editDatePlayed, setEditDatePlayed] = useState<string | null>(null);
   const [players, setPlayers] = useState<PlayerRecord[]>([]);
   const [decks, setDecks] = useState<DeckRecord[]>([]);
   const [lastTable, setLastTable] = useState<LastTable | null>(null);
@@ -121,13 +133,56 @@ export default function NouvellePartieScreen() {
       const filled = await fillMissingColorIdentities();
       setDecks([...filled]);
     }
-  }, []);
+
+    if (editingId === null) {
+      setEditDatePlayed(null);
+      return;
+    }
+
+    const game = stored.games.find((item) => item.id === editingId);
+    if (!game) {
+      setError('Cette partie n’existe plus.');
+      return;
+    }
+
+    setError(null);
+    setGameType(game.gameType);
+    setStep('result');
+    setEditDatePlayed(game.datePlayed);
+    setSelectedIds(game.participants.map((participant) => participant.playerId));
+    if (usesCommanders(game.gameType)) {
+      setDeckByPlayer(
+        Object.fromEntries(
+          game.participants
+            .filter((participant) => participant.deckId !== null)
+            .map((participant) => [participant.playerId, participant.deckId as number])
+        )
+      );
+      setColorsByPlayer({});
+    } else {
+      setDeckByPlayer({});
+      setColorsByPlayer(
+        Object.fromEntries(
+          game.participants
+            .filter((participant) => participant.colors !== null)
+            .map((participant) => [participant.playerId, participant.colors as ColorLetter[]])
+        )
+      );
+    }
+    setWinnerPlayerId(game.winnerPlayerId);
+  }, [editingId]);
 
   useFocusEffect(
     useCallback(() => {
       void refresh();
     }, [refresh])
   );
+
+  useEffect(() => {
+    navigation.setOptions({
+      title: isEditing ? 'Modifier la partie' : 'Nouvelle Partie',
+    });
+  }, [isEditing, navigation]);
 
   useEffect(() => {
     const playerIds = new Set(players.map((player) => player.id));
@@ -281,6 +336,15 @@ export default function NouvellePartieScreen() {
     setSuccess(null);
     setBusy(true);
     try {
+      if (isEditing) {
+        await updateGame(editingId, {
+          gameType,
+          winnerPlayerId,
+          seats,
+        });
+        router.back();
+        return;
+      }
       await addGame({
         gameType,
         winnerPlayerId,
@@ -291,7 +355,13 @@ export default function NouvellePartieScreen() {
       showSuccess('Partie enregistrée.');
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     } catch (err) {
-      setError(err instanceof GameError ? err.message : 'Impossible d’enregistrer cette partie.');
+      setError(
+        err instanceof GameError
+          ? err.message
+          : isEditing
+            ? 'Impossible de modifier cette partie.'
+            : 'Impossible d’enregistrer cette partie.'
+      );
     } finally {
       setBusy(false);
     }
@@ -299,9 +369,12 @@ export default function NouvellePartieScreen() {
     colorsByPlayer,
     commanderMode,
     deckByPlayer,
+    editingId,
     gameType,
+    isEditing,
     refresh,
     resetSeats,
+    router,
     selectedIds,
     showSuccess,
     winnerPlayerId,
@@ -313,6 +386,7 @@ export default function NouvellePartieScreen() {
   const seatedPlayers = playable.filter((player) => selectedIds.includes(player.id));
   const benchPlayers = playable.filter((player) => !selectedIds.includes(player.id));
   const showLastTable =
+    !isEditing &&
     lastTable !== null &&
     lastTable.gameType === gameType &&
     !sameTable(lastTable, gameType, selectedIds, deckByPlayer, colorsByPlayer);
@@ -332,14 +406,20 @@ export default function NouvellePartieScreen() {
         darkColor="#1A2A22">
         <View style={styles.cardHead} lightColor="transparent" darkColor="transparent">
           {commanderMode ? (
-            <Text style={styles.playerName}>{player.name}</Text>
+            <View style={styles.playerNameRow} lightColor="transparent" darkColor="transparent">
+              {isWinner ? <Crown size={18} /> : null}
+              <Text style={styles.playerName}>{player.name}</Text>
+            </View>
           ) : (
             <Pressable
               accessibilityRole="button"
               disabled={busy}
               onPress={() => onToggleLimitedPlayer(player)}
               style={styles.playerNameHit}>
-              <Text style={styles.playerName}>{player.name}</Text>
+              <View style={styles.playerNameRow} lightColor="transparent" darkColor="transparent">
+                {isWinner ? <Crown size={18} /> : null}
+                <Text style={styles.playerName}>{player.name}</Text>
+              </View>
             </Pressable>
           )}
           {seated ? (
@@ -458,7 +538,8 @@ export default function NouvellePartieScreen() {
         keyboardShouldPersistTaps="handled">
         <Text style={styles.kicker}>{GAME_TYPE_LABELS[gameType]}</Text>
         <Text style={styles.summary}>
-          {selectedIds.length} joueur{selectedIds.length === 1 ? '' : 's'} · {todayLabel()}
+          {selectedIds.length} joueur{selectedIds.length === 1 ? '' : 's'} ·{' '}
+          {editDatePlayed ? formatDatePlayed(editDatePlayed) : todayLabel()}
         </Text>
         {success ? (
           <View style={styles.notice} lightColor="#1A2A22" darkColor="#1A2A22">
@@ -531,7 +612,9 @@ export default function NouvellePartieScreen() {
             styles.button,
             (pressed || busy) && styles.buttonPressed,
           ]}>
-          <Text style={styles.buttonLabel}>Enregistrer la partie</Text>
+          <Text style={styles.buttonLabel}>
+            {isEditing ? 'Enregistrer les modifications' : 'Enregistrer la partie'}
+          </Text>
         </Pressable>
         {selectedIds.length > 0 || winnerPlayerId !== null ? (
           <Pressable
@@ -641,6 +724,12 @@ const styles = StyleSheet.create({
   },
   playerNameHit: {
     flex: 1,
+  },
+  playerNameRow: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
   },
   playerName: {
     color: CREAM,
