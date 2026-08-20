@@ -1,9 +1,10 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { readAsStringAsync } from 'expo-file-system/legacy';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
+import { useAppTheme } from '@/components/AppTheme';
 import { Text, View } from '@/components/Themed';
 import { loadDb, replaceAll } from '@/lib/db';
 import { ExportError, downloadAppExport } from '@/lib/export-file';
@@ -12,12 +13,9 @@ import {
   ExportParseError,
   parseAppExport,
 } from '@/lib/export-format';
+import { fill } from '@/lib/theme';
 
 // @refresh reset
-
-const CREAM = '#E8D9B8';
-const GOLD = '#C4A35A';
-const INK = '#1A140C';
 
 type PendingImport = {
   raw: string;
@@ -62,6 +60,8 @@ async function readPickedFile(uri: string, webFile?: Blob): Promise<string> {
 }
 
 export default function ImportExportRoute() {
+  const { colors } = useAppTheme();
+  const styles = useStyles();
   const [data, setData] = useState<AppExport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -189,7 +189,7 @@ export default function ImportExportRoute() {
   const games = data?.games.length ?? 0;
 
   return (
-    <View style={styles.screen} lightColor="#0F1A14" darkColor="#0F1A14">
+    <View style={styles.screen} {...fill(colors.screen)}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.kicker}>Données locales</Text>
         <Text style={styles.summary}>
@@ -198,7 +198,7 @@ export default function ImportExportRoute() {
         </Text>
 
         {pendingImport ? (
-          <View style={styles.confirmBox} lightColor="#1A2A22" darkColor="#1A2A22">
+          <View style={styles.confirmBox} {...fill(colors.card)}>
             <Text style={styles.confirmTitle}>Remplacer les données ?</Text>
             <Text style={styles.confirmBody}>
               Ce fichier contient {pendingImport.players} joueur(s), {pendingImport.decks}{' '}
@@ -265,83 +265,90 @@ export default function ImportExportRoute() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  content: {
-    padding: 24,
-    gap: 16,
-  },
-  kicker: {
-    color: GOLD,
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-  },
-  summary: {
-    color: CREAM,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  confirmBox: {
-    gap: 12,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: GOLD,
-  },
-  confirmTitle: {
-    color: GOLD,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  confirmBody: {
-    color: CREAM,
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  button: {
-    alignSelf: 'stretch',
-    backgroundColor: GOLD,
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  buttonPressed: {
-    opacity: 0.85,
-  },
-  buttonLabel: {
-    color: INK,
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  buttonSecondary: {
-    alignSelf: 'stretch',
-    backgroundColor: 'transparent',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: GOLD,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  buttonSecondaryLabel: {
-    color: GOLD,
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  success: {
-    color: '#8FCB8F',
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: '700',
-  },
-  error: {
-    color: '#E07070',
-    fontSize: 15,
-    lineHeight: 21,
-  },
-});
+function useStyles() {
+  const { colors: c } = useAppTheme();
+  return useMemo(
+    () =>
+      StyleSheet.create({
+        screen: {
+          flex: 1,
+        },
+        content: {
+          padding: 24,
+          gap: 16,
+        },
+        kicker: {
+          color: c.gold,
+          fontSize: 13,
+          fontWeight: '600',
+          letterSpacing: 1.4,
+          textTransform: 'uppercase',
+        },
+        summary: {
+          color: c.cream,
+          fontSize: 20,
+          fontWeight: '700',
+        },
+        confirmBox: {
+          gap: 12,
+          padding: 16,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: c.gold,
+        },
+        confirmTitle: {
+          color: c.gold,
+          fontSize: 16,
+          fontWeight: '800',
+        },
+        confirmBody: {
+          color: c.cream,
+          fontSize: 15,
+          lineHeight: 21,
+        },
+        button: {
+          alignSelf: 'stretch',
+          backgroundColor: c.gold,
+          borderRadius: 12,
+          paddingVertical: 16,
+          paddingHorizontal: 20,
+          alignItems: 'center',
+        },
+        buttonPressed: {
+          opacity: 0.85,
+        },
+        buttonLabel: {
+          color: c.ink,
+          fontSize: 17,
+          fontWeight: '800',
+        },
+        buttonSecondary: {
+          alignSelf: 'stretch',
+          backgroundColor: 'transparent',
+          borderRadius: 12,
+          borderWidth: 2,
+          borderColor: c.gold,
+          paddingVertical: 16,
+          paddingHorizontal: 20,
+          alignItems: 'center',
+        },
+        buttonSecondaryLabel: {
+          color: c.gold,
+          fontSize: 17,
+          fontWeight: '800',
+        },
+        success: {
+          color: c.success,
+          fontSize: 15,
+          lineHeight: 21,
+          fontWeight: '700',
+        },
+        error: {
+          color: c.error,
+          fontSize: 15,
+          lineHeight: 21,
+        },
+      }),
+    [c]
+  );
+}

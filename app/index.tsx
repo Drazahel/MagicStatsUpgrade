@@ -1,68 +1,60 @@
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useAppTheme } from '@/components/AppTheme';
 import { ManaLogo } from '@/components/ManaPip';
 import { MenuCard } from '@/components/MenuCard';
 import { Text, View } from '@/components/Themed';
+import { fill } from '@/lib/theme';
 
 const MENU_ITEMS = [
   {
     title: 'Nouvelle Partie',
-    subtitle: 'Enregistre le résultat de la table, tout de suite après la partie.',
     href: '/nouvelle-partie',
     mana: 'red',
-    typeLine: 'Instant',
   },
   {
     title: 'Historique',
-    subtitle: 'Les parties déjà jouées, soirée par soirée.',
     href: '/historique',
     mana: 'white',
-    typeLine: 'Planewalker',
   },
   {
     title: 'Statistiques',
-    subtitle: 'Résultats, classements et tendances de tes parties.',
     href: '/statistiques',
     mana: 'blue',
-    typeLine: 'Enchantment',
   },
   {
     title: 'Joueurs',
-    subtitle: 'Profils et historique de chacun autour de la table.',
     href: '/joueurs',
     mana: 'green',
-    typeLine: 'Creature',
   },
   {
     title: 'Decks',
-    subtitle: 'Tes listes et leurs performances en tournoi comme en kitchen table.',
     href: '/decks',
     mana: 'colorless',
-    typeLine: 'Artifact',
   },
   {
     title: 'Import/Export',
-    subtitle: 'Sauvegarde et échange tes données entre appareils.',
     href: '/import-export',
     mana: 'black',
-    typeLine: 'Sorcery',
   },
 ] as const;
 
 export default function MenuScreen() {
+  const { colors } = useAppTheme();
+
   return (
-    <View style={styles.screen} lightColor="#0F1A14" darkColor="#0F1A14">
+    <View style={styles.screen} {...fill(colors.screen)}>
       <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}>
           <View style={styles.header} lightColor="transparent" darkColor="transparent">
             <ManaLogo size={26} />
-            <Text style={styles.heading} lightColor="#E8D9B8" darkColor="#E8D9B8">
+            <Text style={styles.heading} {...fill(colors.cream)}>
               Menu
             </Text>
-            <Text style={styles.lead} lightColor="#C4A35A" darkColor="#C4A35A">
+            <Text style={styles.lead} {...fill(colors.gold)}>
               Choisis une section pour continuer.
             </Text>
           </View>

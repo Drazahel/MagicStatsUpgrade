@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 
+import { useAppTheme } from '@/components/AppTheme';
 import { CommanderImage } from '@/components/CommanderImage';
 import { ColorIdentityPips } from '@/components/ManaPip';
 import { Text, View } from '@/components/Themed';
@@ -8,10 +9,7 @@ import { loadDb } from '@/lib/db';
 import { addDeck, DeckError, deleteDeck, fillMissingColorIdentities, updateDeck } from '@/lib/decks';
 import { type DeckRecord, type PlayerRecord } from '@/lib/export-format';
 import { searchCommanders, ScryfallError, type CommanderHit } from '@/lib/scryfall';
-
-const CREAM = '#E8D9B8';
-const GOLD = '#C4A35A';
-const INK = '#1A140C';
+import { fill } from '@/lib/theme';
 
 type PendingDelete = {
   id: number;
@@ -27,6 +25,8 @@ function byCommander(a: DeckRecord, b: DeckRecord): number {
 }
 
 export default function DecksScreen() {
+  const { colors } = useAppTheme();
+  const styles = useStyles();
   const [players, setPlayers] = useState<PlayerRecord[]>([]);
   const [decks, setDecks] = useState<DeckRecord[]>([]);
   const [ownerId, setOwnerId] = useState<number | null>(null);
@@ -206,7 +206,7 @@ export default function DecksScreen() {
     ownerId === null ? decks : decks.filter((deck) => deck.playerId === ownerId);
 
   return (
-    <View style={styles.screen} lightColor="#0F1A14" darkColor="#0F1A14">
+    <View style={styles.screen} {...fill(colors.screen)}>
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled">
@@ -257,7 +257,7 @@ export default function DecksScreen() {
                 }
               }}
               placeholder="Chercher sur Scryfall…"
-              placeholderTextColor="#8A7340"
+              placeholderTextColor={colors.parchmentBorder}
               style={styles.input}
               value={query}
             />
@@ -274,7 +274,7 @@ export default function DecksScreen() {
                 {hit.imageUrl ? (
                   <CommanderImage uri={hit.imageUrl} style={styles.hitImage} />
                 ) : (
-                  <View style={styles.hitImageFallback} lightColor="#1A140C" darkColor="#1A140C" />
+                  <View style={styles.hitImageFallback} {...fill(colors.fallback)} />
                 )}
                 <View style={styles.hitMeta} lightColor="transparent" darkColor="transparent">
                   <Text style={styles.hitName}>{hit.name}</Text>
@@ -284,7 +284,7 @@ export default function DecksScreen() {
             ))}
 
             {selected ? (
-              <View style={styles.preview} lightColor="#1A2A22" darkColor="#1A2A22">
+              <View style={styles.preview} {...fill(colors.card)}>
                 {selected.imageUrl ? (
                   <CommanderImage uri={selected.imageUrl} style={styles.previewImage} />
                 ) : null}
@@ -326,7 +326,7 @@ export default function DecksScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {pendingDelete ? (
-          <View style={styles.confirmBox} lightColor="#1A2A22" darkColor="#1A2A22">
+          <View style={styles.confirmBox} {...fill(colors.card)}>
             <Text style={styles.confirmTitle}>Supprimer {pendingDelete.name} ?</Text>
             <Text style={styles.confirmBody}>
               Cette action est définitive. Un deck déjà utilisé dans une partie ne peut pas
@@ -367,13 +367,12 @@ export default function DecksScreen() {
           <View
             key={deck.id}
             style={styles.card}
-            lightColor="#1A2A22"
-            darkColor="#1A2A22">
+            {...fill(colors.card)}>
             <View style={styles.deckHead} lightColor="transparent" darkColor="transparent">
               {deck.commanderImageUrl ? (
                 <CommanderImage uri={deck.commanderImageUrl} style={styles.deckImage} />
               ) : (
-                <View style={styles.deckImageFallback} lightColor="#1A140C" darkColor="#1A140C" />
+                <View style={styles.deckImageFallback} {...fill(colors.fallback)} />
               )}
               <View style={styles.deckMeta} lightColor="transparent" darkColor="transparent">
                 <Text style={styles.playerName}>{deck.commanderName}</Text>
@@ -415,7 +414,11 @@ export default function DecksScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function useStyles() {
+  const { colors: c } = useAppTheme();
+  return useMemo(
+    () =>
+      StyleSheet.create({
   screen: {
     flex: 1,
   },
@@ -424,19 +427,19 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   kicker: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 13,
     fontWeight: '600',
     letterSpacing: 1.4,
     textTransform: 'uppercase',
   },
   summary: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 20,
     fontWeight: '700',
   },
   empty: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 15,
     lineHeight: 21,
   },
@@ -444,7 +447,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   fieldLabel: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.6,
@@ -456,32 +459,32 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    borderColor: GOLD,
+    borderColor: c.gold,
     borderRadius: 20,
     borderWidth: 2,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   chipActive: {
-    backgroundColor: GOLD,
+    backgroundColor: c.gold,
   },
   chipLabel: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 15,
     fontWeight: '800',
   },
   chipLabelActive: {
-    color: INK,
+    color: c.ink,
   },
   hint: {
-    color: CREAM,
+    color: c.cream,
     opacity: 0.75,
     fontSize: 14,
   },
   hit: {
     alignItems: 'center',
-    backgroundColor: '#1A2A22',
-    borderColor: GOLD,
+    backgroundColor: c.card,
+    borderColor: c.gold,
     borderRadius: 12,
     borderWidth: 1,
     flexDirection: 'row',
@@ -497,7 +500,7 @@ const styles = StyleSheet.create({
     width: 88,
   },
   hitName: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -507,7 +510,7 @@ const styles = StyleSheet.create({
   },
   preview: {
     alignItems: 'center',
-    borderColor: GOLD,
+    borderColor: c.gold,
     borderRadius: 12,
     borderWidth: 1,
     gap: 10,
@@ -522,7 +525,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: GOLD,
+    borderColor: c.gold,
   },
   deckHead: {
     alignItems: 'center',
@@ -542,22 +545,22 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   playerName: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 18,
     fontWeight: '800',
   },
   owner: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 15,
     fontWeight: '600',
   },
   input: {
     alignSelf: 'stretch',
-    backgroundColor: CREAM,
+    backgroundColor: c.cream,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#8A7340',
-    color: INK,
+    borderColor: c.parchmentBorder,
+    color: c.ink,
     fontSize: 17,
     fontWeight: '600',
     paddingHorizontal: 16,
@@ -575,21 +578,21 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: GOLD,
+    borderColor: c.gold,
   },
   confirmTitle: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 16,
     fontWeight: '800',
   },
   confirmBody: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 15,
     lineHeight: 21,
   },
   button: {
     alignSelf: 'stretch',
-    backgroundColor: GOLD,
+    backgroundColor: c.gold,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -599,7 +602,7 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   buttonLabel: {
-    color: INK,
+    color: c.ink,
     fontSize: 16,
     fontWeight: '800',
   },
@@ -608,25 +611,28 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: GOLD,
+    borderColor: c.gold,
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: 'center',
   },
   buttonSecondaryLabel: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 16,
     fontWeight: '800',
   },
   success: {
-    color: '#8FCB8F',
+    color: c.success,
     fontSize: 15,
     lineHeight: 21,
     fontWeight: '700',
   },
   error: {
-    color: '#E07070',
+    color: c.error,
     fontSize: 15,
     lineHeight: 21,
   },
-});
+      }),
+    [c]
+  );
+}

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet } from 'react-native';
 
 import { ManaPip, type ManaColor } from '@/components/ManaPip';
 import { Text, View } from '@/components/Themed';
+import { useAppTheme } from '@/components/AppTheme';
 import {
   COLOR_LETTERS,
   colorIdentityName,
@@ -24,7 +25,6 @@ function letterToMana(letter: ColorLetter): ManaColor {
   }
 }
 
-const GOLD = '#C4A35A';
 const PIP_GAP = 8;
 const PIP_CHROME = 12;
 
@@ -35,6 +35,7 @@ type ColorIdentityPickerProps = {
 };
 
 export function ColorIdentityPicker({ value, disabled, onChange }: ColorIdentityPickerProps) {
+  const { colors } = useAppTheme();
   const selected = value ?? [];
   const [slotSize, setSlotSize] = useState(44);
 
@@ -82,8 +83,9 @@ export function ColorIdentityPicker({ value, disabled, onChange }: ColorIdentity
                   width: slotSize,
                   height: slotSize,
                   borderRadius: slotSize / 2,
+                  borderColor: colors.gold,
                 },
-                active && styles.pipButtonActive,
+                active && { backgroundColor: colors.gold },
                 (pressed || disabled) && styles.pressed,
               ]}>
               <ManaPip color={letterToMana(letter)} size={pipSize} />
@@ -93,7 +95,7 @@ export function ColorIdentityPicker({ value, disabled, onChange }: ColorIdentity
       </View>
 
       {value !== null && value.length > 0 ? (
-        <Text style={styles.identity}>{colorIdentityName(selected)}</Text>
+        <Text style={[styles.identity, { color: colors.gold }]}>{colorIdentityName(selected)}</Text>
       ) : null}
     </View>
   );
@@ -114,14 +116,9 @@ const styles = StyleSheet.create({
   pipButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderColor: GOLD,
     borderWidth: 2,
   },
-  pipButtonActive: {
-    backgroundColor: GOLD,
-  },
   identity: {
-    color: GOLD,
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'center',

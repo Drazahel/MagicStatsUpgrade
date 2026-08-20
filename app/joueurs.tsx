@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -6,14 +6,12 @@ import {
   TextInput,
 } from 'react-native';
 
+import { useAppTheme } from '@/components/AppTheme';
 import { Text, View } from '@/components/Themed';
 import { loadDb } from '@/lib/db';
 import { type PlayerRecord } from '@/lib/export-format';
 import { addPlayer, deletePlayer, PlayerError, renamePlayer } from '@/lib/players';
-
-const CREAM = '#E8D9B8';
-const GOLD = '#C4A35A';
-const INK = '#1A140C';
+import { fill } from '@/lib/theme';
 
 type PendingDelete = {
   id: number;
@@ -25,6 +23,8 @@ function byName(a: PlayerRecord, b: PlayerRecord): number {
 }
 
 export default function JoueursScreen() {
+  const { colors } = useAppTheme();
+  const styles = useStyles();
   const [players, setPlayers] = useState<PlayerRecord[]>([]);
   const [draftName, setDraftName] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -134,7 +134,7 @@ export default function JoueursScreen() {
   }, [pendingDelete, refresh, showSuccess]);
 
   return (
-    <View style={styles.screen} lightColor="#0F1A14" darkColor="#0F1A14">
+    <View style={styles.screen} {...fill(colors.screen)}>
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled">
@@ -154,7 +154,7 @@ export default function JoueursScreen() {
               void onAdd();
             }}
             placeholder="Nom du joueur"
-            placeholderTextColor="#8A7340"
+            placeholderTextColor={colors.parchmentBorder}
             returnKeyType="done"
             style={styles.input}
             value={draftName}
@@ -177,7 +177,7 @@ export default function JoueursScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {pendingDelete ? (
-          <View style={styles.confirmBox} lightColor="#1A2A22" darkColor="#1A2A22">
+          <View style={styles.confirmBox} {...fill(colors.card)}>
             <Text style={styles.confirmTitle}>Supprimer {pendingDelete.name} ?</Text>
             <Text style={styles.confirmBody}>
               Cette action est définitive. Un joueur lié à un deck ou une partie ne peut pas
@@ -212,8 +212,7 @@ export default function JoueursScreen() {
           <View
             key={player.id}
             style={styles.card}
-            lightColor="#1A2A22"
-            darkColor="#1A2A22">
+            {...fill(colors.card)}>
             {editingId === player.id ? (
               <>
                 <TextInput
@@ -295,117 +294,124 @@ export default function JoueursScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  content: {
-    padding: 24,
-    gap: 16,
-  },
-  kicker: {
-    color: GOLD,
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-  },
-  summary: {
-    color: CREAM,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  form: {
-    gap: 12,
-  },
-  card: {
-    gap: 12,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: GOLD,
-  },
-  playerName: {
-    color: CREAM,
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  input: {
-    alignSelf: 'stretch',
-    backgroundColor: CREAM,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#8A7340',
-    color: INK,
-    fontSize: 17,
-    fontWeight: '600',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  rowButton: {
-    flex: 1,
-  },
-  confirmBox: {
-    gap: 12,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: GOLD,
-  },
-  confirmTitle: {
-    color: GOLD,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  confirmBody: {
-    color: CREAM,
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  button: {
-    alignSelf: 'stretch',
-    backgroundColor: GOLD,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  buttonPressed: {
-    opacity: 0.85,
-  },
-  buttonLabel: {
-    color: INK,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  buttonSecondary: {
-    alignSelf: 'stretch',
-    backgroundColor: 'transparent',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: GOLD,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  buttonSecondaryLabel: {
-    color: GOLD,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  success: {
-    color: '#8FCB8F',
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: '700',
-  },
-  error: {
-    color: '#E07070',
-    fontSize: 15,
-    lineHeight: 21,
-  },
-});
+function useStyles() {
+  const { colors: c } = useAppTheme();
+  return useMemo(
+    () =>
+      StyleSheet.create({
+        screen: {
+          flex: 1,
+        },
+        content: {
+          padding: 24,
+          gap: 16,
+        },
+        kicker: {
+          color: c.gold,
+          fontSize: 13,
+          fontWeight: '600',
+          letterSpacing: 1.4,
+          textTransform: 'uppercase',
+        },
+        summary: {
+          color: c.cream,
+          fontSize: 20,
+          fontWeight: '700',
+        },
+        form: {
+          gap: 12,
+        },
+        card: {
+          gap: 12,
+          padding: 16,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: c.gold,
+        },
+        playerName: {
+          color: c.cream,
+          fontSize: 20,
+          fontWeight: '800',
+        },
+        input: {
+          alignSelf: 'stretch',
+          backgroundColor: c.parchment,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: c.parchmentBorder,
+          color: c.ink,
+          fontSize: 17,
+          fontWeight: '600',
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+        },
+        row: {
+          flexDirection: 'row',
+          gap: 10,
+        },
+        rowButton: {
+          flex: 1,
+        },
+        confirmBox: {
+          gap: 12,
+          padding: 16,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: c.gold,
+        },
+        confirmTitle: {
+          color: c.gold,
+          fontSize: 16,
+          fontWeight: '800',
+        },
+        confirmBody: {
+          color: c.cream,
+          fontSize: 15,
+          lineHeight: 21,
+        },
+        button: {
+          alignSelf: 'stretch',
+          backgroundColor: c.gold,
+          borderRadius: 12,
+          paddingVertical: 14,
+          paddingHorizontal: 16,
+          alignItems: 'center',
+        },
+        buttonPressed: {
+          opacity: 0.85,
+        },
+        buttonLabel: {
+          color: c.ink,
+          fontSize: 16,
+          fontWeight: '800',
+        },
+        buttonSecondary: {
+          alignSelf: 'stretch',
+          backgroundColor: 'transparent',
+          borderRadius: 12,
+          borderWidth: 2,
+          borderColor: c.gold,
+          paddingVertical: 12,
+          paddingHorizontal: 16,
+          alignItems: 'center',
+        },
+        buttonSecondaryLabel: {
+          color: c.gold,
+          fontSize: 16,
+          fontWeight: '800',
+        },
+        success: {
+          color: c.success,
+          fontSize: 15,
+          lineHeight: 21,
+          fontWeight: '700',
+        },
+        error: {
+          color: c.error,
+          fontSize: 15,
+          lineHeight: 21,
+        },
+      }),
+    [c]
+  );
+}

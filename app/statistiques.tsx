@@ -2,6 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
+import { useAppTheme } from '@/components/AppTheme';
 import { CommanderImage } from '@/components/CommanderImage';
 import { ColorIdentityPips } from '@/components/ManaPip';
 import { Text, View } from '@/components/Themed';
@@ -19,16 +20,14 @@ import {
   type RecordLine,
   type StatFilter,
 } from '@/lib/stats';
-
-const CREAM = '#E8D9B8';
-const GOLD = '#C4A35A';
-const INK = '#1A140C';
+import { fill } from '@/lib/theme';
 
 function formatWinrate(value: number): string {
   return `${value} %`;
 }
 
 function StatFigures({ line }: { line: RecordLine }) {
+  const styles = useStyles();
   return (
     <View style={styles.figures} lightColor="transparent" darkColor="transparent">
       <Text style={styles.figure}>
@@ -55,13 +54,15 @@ function PlayerCard({
   stat: PlayerStat;
   onPress: () => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Voir les commanders de ${stat.name}`}
       onPress={onPress}
       style={({ pressed }) => [pressed && styles.pressed]}>
-      <View style={styles.card} lightColor="#1A2A22" darkColor="#1A2A22">
+      <View style={styles.card} {...fill(colors.card)}>
         <Text style={styles.cardTitle}>{stat.name}</Text>
         <StatFigures line={stat} />
       </View>
@@ -76,13 +77,15 @@ function DeckCard({
   stat: DeckStat;
   showOwner?: boolean;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useStyles();
   return (
-    <View style={styles.card} lightColor="#1A2A22" darkColor="#1A2A22">
+    <View style={styles.card} {...fill(colors.card)}>
       <View style={styles.deckHead} lightColor="transparent" darkColor="transparent">
         {stat.commanderImageUrl ? (
           <CommanderImage uri={stat.commanderImageUrl} style={styles.deckImage} />
         ) : (
-          <View style={styles.deckImageFallback} lightColor="#1A140C" darkColor="#1A140C" />
+          <View style={styles.deckImageFallback} {...fill(colors.fallback)} />
         )}
         <View style={styles.deckMeta} lightColor="transparent" darkColor="transparent">
           <Text style={styles.cardTitle}>{stat.commanderName}</Text>
@@ -96,8 +99,10 @@ function DeckCard({
 }
 
 function ColorCard({ stat }: { stat: ColorStat }) {
+  const { colors } = useAppTheme();
+  const styles = useStyles();
   return (
-    <View style={styles.card} lightColor="#1A2A22" darkColor="#1A2A22">
+    <View style={styles.card} {...fill(colors.card)}>
       <ColorIdentityPips colors={stat.colors} size={22} />
       <Text style={styles.cardTitle}>{stat.name}</Text>
       <StatFigures line={stat} />
@@ -112,6 +117,7 @@ function FilterChips({
   filter: StatFilter;
   onChange: (next: StatFilter) => void;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.chips} lightColor="transparent" darkColor="transparent">
       {STAT_FILTERS.map((item) => {
@@ -137,6 +143,8 @@ function FilterChips({
 }
 
 export default function StatistiquesScreen() {
+  const { colors } = useAppTheme();
+  const styles = useStyles();
   const [data, setData] = useState<AppExport | null>(null);
   const [filter, setFilter] = useState<StatFilter>('all');
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
@@ -185,12 +193,12 @@ export default function StatistiquesScreen() {
   }, [data, filter, selectedPlayerId]);
 
   return (
-    <View style={styles.screen} lightColor="#0F1A14" darkColor="#0F1A14">
+    <View style={styles.screen} {...fill(colors.screen)}>
       <ScrollView contentContainerStyle={styles.content}>
         {selectedPlayer ? (
           <>
             <Text style={styles.kicker}>Joueur</Text>
-            <View style={styles.card} lightColor="#1A2A22" darkColor="#1A2A22">
+            <View style={styles.card} {...fill(colors.card)}>
               <Text style={styles.cardTitle}>{selectedPlayer.name}</Text>
               {selectedPlayer.total > 0 ? <StatFigures line={selectedPlayer} /> : null}
             </View>
@@ -266,7 +274,11 @@ export default function StatistiquesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function useStyles() {
+  const { colors: c } = useAppTheme();
+  return useMemo(
+    () =>
+      StyleSheet.create({
   screen: {
     flex: 1,
   },
@@ -275,24 +287,24 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   kicker: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 13,
     fontWeight: '600',
     letterSpacing: 1.4,
     textTransform: 'uppercase',
   },
   summary: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 20,
     fontWeight: '700',
   },
   empty: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 15,
     lineHeight: 21,
   },
   fieldLabel: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.6,
@@ -304,22 +316,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    borderColor: GOLD,
+    borderColor: c.gold,
     borderRadius: 20,
     borderWidth: 2,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   chipActive: {
-    backgroundColor: GOLD,
+    backgroundColor: c.gold,
   },
   chipLabel: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 15,
     fontWeight: '800',
   },
   chipLabelActive: {
-    color: INK,
+    color: c.ink,
   },
   pressed: {
     opacity: 0.85,
@@ -329,15 +341,15 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: GOLD,
+    borderColor: c.gold,
   },
   cardTitle: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 18,
     fontWeight: '800',
   },
   owner: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -365,17 +377,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   figure: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 15,
     fontWeight: '700',
   },
   figureLabel: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 13,
     fontWeight: '800',
   },
   winrate: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 18,
     fontWeight: '800',
     marginLeft: 'auto',
@@ -385,15 +397,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: GOLD,
+    borderColor: c.gold,
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: 'center',
   },
   buttonSecondaryLabel: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 16,
     fontWeight: '800',
     textAlign: 'center',
   },
-});
+      }),
+    [c]
+  );
+}

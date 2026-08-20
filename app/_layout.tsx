@@ -4,6 +4,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
+import { AppThemeProvider, useAppTheme } from '@/components/AppTheme';
+import { ThemeSwitch } from '@/components/ThemeSwitch';
 import { useColorScheme } from '@/components/useColorScheme';
 
 export {
@@ -36,30 +38,41 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <AppThemeProvider>
+      <RootLayoutNav />
+    </AppThemeProvider>
+  );
 }
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const { colors } = useAppTheme();
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack
         screenOptions={{
           headerShadowVisible: false,
-          headerTintColor: '#E8D9B8',
+          headerTintColor: colors.cream,
           headerStyle: {
-            backgroundColor: '#1A140C',
+            backgroundColor: colors.header,
           },
           headerTitleStyle: {
             fontWeight: '700',
-            color: '#C4A35A',
+            color: colors.gold,
           },
           contentStyle: {
-            backgroundColor: '#0F1A14',
+            backgroundColor: colors.screen,
           },
         }}>
-        <Stack.Screen name="index" options={{ title: 'Menu' }} />
+        <Stack.Screen
+          name="index"
+          options={{
+            title: 'Menu',
+            headerRight: () => <ThemeSwitch />,
+          }}
+        />
         <Stack.Screen name="nouvelle-partie" options={{ title: 'Nouvelle Partie' }} />
         <Stack.Screen name="historique" options={{ title: 'Historique' }} />
         <Stack.Screen name="statistiques" options={{ title: 'Statistiques' }} />

@@ -1,7 +1,8 @@
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
+import { useAppTheme } from '@/components/AppTheme';
 import { ColorIdentityPicker } from '@/components/ColorIdentityPicker';
 import { Crown } from '@/components/Crown';
 import { ColorIdentityPips } from '@/components/ManaPip';
@@ -29,10 +30,7 @@ import {
   type GameSeat,
   type LastTable,
 } from '@/lib/games';
-
-const CREAM = '#E8D9B8';
-const GOLD = '#C4A35A';
-const INK = '#1A140C';
+import { fill } from '@/lib/theme';
 
 function byName(a: PlayerRecord, b: PlayerRecord): number {
   return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
@@ -78,6 +76,8 @@ function sameTable(
 }
 
 export default function NouvellePartieScreen() {
+  const { colors } = useAppTheme();
+  const styles = useStyles();
   const router = useRouter();
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ gameId?: string | string[] }>();
@@ -402,8 +402,7 @@ export default function NouvellePartieScreen() {
       <View
         key={player.id}
         style={[styles.card, seated && styles.cardSeated]}
-        lightColor="#1A2A22"
-        darkColor="#1A2A22">
+        {...fill(colors.card)}>
         <View style={styles.cardHead} lightColor="transparent" darkColor="transparent">
           {commanderMode ? (
             <View style={styles.playerNameRow} lightColor="transparent" darkColor="transparent">
@@ -491,7 +490,7 @@ export default function NouvellePartieScreen() {
 
   if (step === 'type') {
     return (
-      <View style={styles.screen} lightColor="#0F1A14" darkColor="#0F1A14">
+      <View style={styles.screen} {...fill(colors.screen)}>
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.kicker}>Format</Text>
           <Text style={styles.summary}>Quel type de partie ?</Text>
@@ -531,7 +530,7 @@ export default function NouvellePartieScreen() {
   }
 
   return (
-    <View style={styles.screen} lightColor="#0F1A14" darkColor="#0F1A14">
+    <View style={styles.screen} {...fill(colors.screen)}>
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.content}
@@ -542,7 +541,7 @@ export default function NouvellePartieScreen() {
           {editDatePlayed ? formatDatePlayed(editDatePlayed) : todayLabel()}
         </Text>
         {success ? (
-          <View style={styles.notice} lightColor="#1A2A22" darkColor="#1A2A22">
+          <View style={styles.notice} {...fill(colors.card)}>
             <Text style={styles.success}>{success}</Text>
           </View>
         ) : null}
@@ -633,7 +632,11 @@ export default function NouvellePartieScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function useStyles() {
+  const { colors: c } = useAppTheme();
+  return useMemo(
+    () =>
+      StyleSheet.create({
   screen: {
     flex: 1,
   },
@@ -642,31 +645,31 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   kicker: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 13,
     fontWeight: '600',
     letterSpacing: 1.4,
     textTransform: 'uppercase',
   },
   summary: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 20,
     fontWeight: '700',
   },
   empty: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 15,
     lineHeight: 21,
   },
   notice: {
-    borderColor: '#8FCB8F',
+    borderColor: c.success,
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   fieldLabel: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.6,
@@ -678,7 +681,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    borderColor: GOLD,
+    borderColor: c.gold,
     borderRadius: 20,
     borderWidth: 2,
     paddingHorizontal: 14,
@@ -689,29 +692,29 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   winnerChip: {
-    borderColor: GOLD,
+    borderColor: c.gold,
     borderRadius: 20,
     borderWidth: 2,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   chipActive: {
-    backgroundColor: GOLD,
+    backgroundColor: c.gold,
   },
   chipLabel: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 15,
     fontWeight: '800',
   },
   chipLabelActive: {
-    color: INK,
+    color: c.ink,
   },
   card: {
     gap: 12,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: GOLD,
+    borderColor: c.gold,
   },
   cardSeated: {
     borderWidth: 2,
@@ -732,19 +735,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   playerName: {
-    color: CREAM,
+    color: c.cream,
     flex: 1,
     fontSize: 18,
     fontWeight: '800',
   },
   unseatLabel: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 14,
     fontWeight: '700',
   },
   button: {
     alignSelf: 'stretch',
-    backgroundColor: GOLD,
+    backgroundColor: c.gold,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -754,7 +757,7 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   buttonLabel: {
-    color: INK,
+    color: c.ink,
     fontSize: 16,
     fontWeight: '800',
   },
@@ -763,26 +766,29 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: GOLD,
+    borderColor: c.gold,
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: 'center',
   },
   buttonSecondaryLabel: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 16,
     fontWeight: '800',
     textAlign: 'center',
   },
   success: {
-    color: '#8FCB8F',
+    color: c.success,
     fontSize: 15,
     fontWeight: '700',
     textAlign: 'center',
   },
   error: {
-    color: '#E07070',
+    color: c.error,
     fontSize: 15,
     lineHeight: 21,
   },
-});
+      }),
+    [c]
+  );
+}

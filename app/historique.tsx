@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
+import { useAppTheme } from '@/components/AppTheme';
 import { CommanderImage } from '@/components/CommanderImage';
 import { Crown } from '@/components/Crown';
 import { ColorIdentityPips } from '@/components/ManaPip';
@@ -18,10 +19,7 @@ import {
 import { colorIdentityName, GAME_TYPE_LABELS, usesCommanders } from '@/lib/game-types';
 import { deleteGame, formatDatePlayed, GameError } from '@/lib/games';
 import { STAT_FILTERS, STAT_FILTER_LABELS, type StatFilter } from '@/lib/stats';
-
-const CREAM = '#E8D9B8';
-const GOLD = '#C4A35A';
-const INK = '#1A140C';
+import { fill } from '@/lib/theme';
 
 function playerName(players: PlayerRecord[], playerId: number): string {
   return players.find((player) => player.id === playerId)?.name ?? 'Joueur inconnu';
@@ -53,6 +51,7 @@ function FilterChips({
   filter: StatFilter;
   onChange: (next: StatFilter) => void;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.chips} lightColor="transparent" darkColor="transparent">
       {STAT_FILTERS.map((item) => {
@@ -88,6 +87,8 @@ function ParticipantLine({
   data: AppExport;
   compact: boolean;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useStyles();
   const name = playerName(data.players, participant.playerId);
   const won = game.winnerPlayerId === participant.playerId;
   const deck = deckFor(data.decks, participant);
@@ -103,7 +104,7 @@ function ParticipantLine({
         deck?.commanderImageUrl ? (
           <CommanderImage uri={deck.commanderImageUrl} style={styles.deckImage} />
         ) : (
-          <View style={styles.deckImageFallback} lightColor="#1A140C" darkColor="#1A140C" />
+          <View style={styles.deckImageFallback} {...fill(colors.fallback)} />
         )
       ) : null}
       <View style={styles.participantMeta} lightColor="transparent" darkColor="transparent">
@@ -126,6 +127,8 @@ function ParticipantLine({
 
 export default function HistoriqueScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
+  const styles = useStyles();
   const [data, setData] = useState<AppExport | null>(null);
   const [filter, setFilter] = useState<StatFilter>('all');
   const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
@@ -207,7 +210,7 @@ export default function HistoriqueScreen() {
   }, [refresh, selectedGameId, showSuccess]);
 
   return (
-    <View style={styles.screen} lightColor="#0F1A14" darkColor="#0F1A14">
+    <View style={styles.screen} {...fill(colors.screen)}>
       <ScrollView contentContainerStyle={styles.content}>
         {selectedGame && data ? (
           <>
@@ -231,7 +234,7 @@ export default function HistoriqueScreen() {
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             {pendingDelete ? (
-              <View style={styles.confirmBox} lightColor="#1A2A22" darkColor="#1A2A22">
+              <View style={styles.confirmBox} {...fill(colors.card)}>
                 <Text style={styles.confirmTitle}>Supprimer cette partie ?</Text>
                 <Text style={styles.confirmBody}>Cette action est définitive.</Text>
                 <Pressable
@@ -267,8 +270,7 @@ export default function HistoriqueScreen() {
               <View
                 key={participant.id}
                 style={styles.card}
-                lightColor="#1A2A22"
-                darkColor="#1A2A22">
+                {...fill(colors.card)}>
                 <ParticipantLine
                   participant={participant}
                   game={selectedGame}
@@ -335,7 +337,7 @@ export default function HistoriqueScreen() {
                       setSelectedGameId(game.id);
                     }}
                     style={({ pressed }) => [pressed && styles.pressed]}>
-                    <View style={styles.card} lightColor="#1A2A22" darkColor="#1A2A22">
+                    <View style={styles.card} {...fill(colors.card)}>
                       <Text style={styles.cardTitle}>{formatDatePlayed(game.datePlayed)}</Text>
                       <Text style={styles.owner}>{GAME_TYPE_LABELS[game.gameType]}</Text>
                       {game.participants.map((participant) => (
@@ -358,7 +360,11 @@ export default function HistoriqueScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function useStyles() {
+  const { colors: c } = useAppTheme();
+  return useMemo(
+    () =>
+      StyleSheet.create({
   screen: {
     flex: 1,
   },
@@ -367,19 +373,19 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   kicker: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 13,
     fontWeight: '600',
     letterSpacing: 1.4,
     textTransform: 'uppercase',
   },
   summary: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 20,
     fontWeight: '700',
   },
   empty: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 15,
     lineHeight: 21,
   },
@@ -389,22 +395,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    borderColor: GOLD,
+    borderColor: c.gold,
     borderRadius: 20,
     borderWidth: 2,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   chipActive: {
-    backgroundColor: GOLD,
+    backgroundColor: c.gold,
   },
   chipLabel: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 15,
     fontWeight: '800',
   },
   chipLabelActive: {
-    color: INK,
+    color: c.ink,
   },
   pressed: {
     opacity: 0.85,
@@ -414,15 +420,15 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: GOLD,
+    borderColor: c.gold,
   },
   cardTitle: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 18,
     fontWeight: '800',
   },
   owner: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -444,16 +450,16 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   participantName: {
-    color: CREAM,
+    color: c.cream,
     flexShrink: 1,
     fontSize: 16,
     fontWeight: '800',
   },
   winnerName: {
-    color: GOLD,
+    color: c.gold,
   },
   participantDetail: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -470,28 +476,28 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: GOLD,
+    borderColor: c.gold,
   },
   confirmTitle: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 16,
     fontWeight: '800',
   },
   confirmBody: {
-    color: CREAM,
+    color: c.cream,
     fontSize: 15,
     lineHeight: 21,
   },
   button: {
     alignSelf: 'stretch',
-    backgroundColor: GOLD,
+    backgroundColor: c.gold,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
     alignItems: 'center',
   },
   buttonLabel: {
-    color: INK,
+    color: c.ink,
     fontSize: 16,
     fontWeight: '800',
   },
@@ -500,26 +506,29 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: GOLD,
+    borderColor: c.gold,
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: 'center',
   },
   buttonSecondaryLabel: {
-    color: GOLD,
+    color: c.gold,
     fontSize: 16,
     fontWeight: '800',
     textAlign: 'center',
   },
   success: {
-    color: '#8FCB8F',
+    color: c.success,
     fontSize: 15,
     lineHeight: 21,
     fontWeight: '700',
   },
   error: {
-    color: '#E07070',
+    color: c.error,
     fontSize: 15,
     lineHeight: 21,
   },
-});
+      }),
+    [c]
+  );
+}
