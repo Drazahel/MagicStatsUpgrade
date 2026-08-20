@@ -24,11 +24,13 @@ export type GameSeat = {
   colors: ColorLetter[] | null;
 };
 
-export type AddGameInput = {
+export type SaveGameInput = {
   gameType: GameType;
   winnerPlayerId: number;
   seats: GameSeat[];
 };
+
+export type AddGameInput = SaveGameInput;
 
 export type LastTable = {
   gameType: GameType;
@@ -41,6 +43,18 @@ export function todayLocal(): string {
   const now = new Date();
   const pad = (value: number) => String(value).padStart(2, '0');
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+export function formatDatePlayed(datePlayed: string): string {
+  const [year, month, day] = datePlayed.split('-').map(Number);
+  if (!year || !month || !day) {
+    return datePlayed;
+  }
+  return new Date(year, month - 1, day).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
 function nextGameId(games: GameRecord[]): number {
@@ -99,8 +113,11 @@ export function lastReplayableTable(
   return { gameType: last.gameType, seats };
 }
 
-export async function addGame(input: AddGameInput): Promise<GameRecord> {
-  const datePlayed = todayLocal();
+function assertSeats(
+  input: SaveGameInput,
+  players: { id: number; name: string }[],
+  decks: { id: number; playerId: number }[]
+): void {
   const seats = input.seats;
   if (seats.length < MIN_GAME_PLAYERS) {
     throw new GameError('Une partie doit avoir au moins 2 joueurs.');
@@ -116,6 +133,11 @@ export async function addGame(input: AddGameInput): Promise<GameRecord> {
     }
     playerIds.add(seat.playerId);
 
+    const player = players.find((item) => item.id === seat.playerId);
+    if (!player) {
+      throw new GameError('Ce joueur n’existe plus.');
+    }
+
     if (commanderGame) {
       if (seat.deckId === null) {
         throw new GameError('Chaque joueur doit jouer un de ses decks.');
@@ -124,6 +146,13 @@ export async function addGame(input: AddGameInput): Promise<GameRecord> {
         throw new GameError('Un deck ne peut pas être joué deux fois.');
       }
       deckIds.add(seat.deckId);
+      const deck = decks.find((item) => item.id === seat.deckId);
+      if (!deck) {
+        throw new GameError('Ce deck n’existe plus.');
+      }
+      if (deck.playerId !== seat.playerId) {
+        throw new GameError(`${player.name} ne peut pas jouer ce deck.`);
+      }
     } else if (seat.colors === null || seat.colors.length === 0) {
       throw new GameError('Chaque joueur doit avoir des couleurs.');
     }
@@ -132,51 +161,83 @@ export async function addGame(input: AddGameInput): Promise<GameRecord> {
   if (!playerIds.has(input.winnerPlayerId)) {
     throw new GameError('Le gagnant doit être l’un des participants.');
   }
+}
 
+function participantsFromSeats(
+  gameId: number,
+  seats: GameSeat[],
+  commanderGame: boolean,
+  startId: number
+): ParticipantRecord[] {
+  return seats.map((seat, index) => ({
+    id: startId + index,
+    gameId,
+    playerId: seat.playerId,
+    deckId: commanderGame ? seat.deckId : null,
+    colors: commanderGame ? null : sortColors(seat.colors ?? []),
+  }));
+}
+
+export async function addGame(input: AddGameInput): Promise<GameRecord> {
   const data = await loadDb();
+  assertSeats(input, data.players, data.decks);
 
-  for (const seat of seats) {
-    const player = data.players.find((item) => item.id === seat.playerId);
-    if (!player) {
-      throw new GameError('Ce joueur n’existe plus.');
-    }
-    if (!commanderGame) {
-      continue;
-    }
-    const deck = data.decks.find((item) => item.id === seat.deckId);
-    if (!deck) {
-      throw new GameError('Ce deck n’existe plus.');
-    }
-    if (deck.playerId !== seat.playerId) {
-      throw new GameError(`${player.name} ne peut pas jouer ce deck.`);
-    }
-  }
-
+  const commanderGame = usesCommanders(input.gameType);
   const gameId = nextGameId(data.games);
-  let participantId = nextParticipantId(data.games);
-  const participants: ParticipantRecord[] = seats.map((seat) => {
-    const participant: ParticipantRecord = {
-      id: participantId,
-      gameId,
-      playerId: seat.playerId,
-      deckId: commanderGame ? seat.deckId : null,
-      colors: commanderGame ? null : sortColors(seat.colors ?? []),
-    };
-    participantId += 1;
-    return participant;
-  });
-
   const game: GameRecord = {
     id: gameId,
-    datePlayed,
+    datePlayed: todayLocal(),
     winnerPlayerId: input.winnerPlayerId,
     createdAt: new Date().toISOString(),
     gameType: input.gameType,
-    participants,
+    participants: participantsFromSeats(
+      gameId,
+      input.seats,
+      commanderGame,
+      nextParticipantId(data.games)
+    ),
   };
 
   data.schemaVersion = Math.max(data.schemaVersion, EXPORT_SCHEMA_VERSION);
   data.games = [...data.games, game];
   await saveDb(data);
   return game;
+}
+
+export async function updateGame(id: number, input: SaveGameInput): Promise<GameRecord> {
+  const data = await loadDb();
+  const current = data.games.find((game) => game.id === id);
+  if (!current) {
+    throw new GameError('Cette partie n’existe plus.');
+  }
+
+  assertSeats(input, data.players, data.decks);
+
+  const commanderGame = usesCommanders(input.gameType);
+  const others = data.games.filter((game) => game.id !== id);
+  const game: GameRecord = {
+    ...current,
+    winnerPlayerId: input.winnerPlayerId,
+    gameType: input.gameType,
+    participants: participantsFromSeats(
+      id,
+      input.seats,
+      commanderGame,
+      nextParticipantId(others)
+    ),
+  };
+
+  data.schemaVersion = Math.max(data.schemaVersion, EXPORT_SCHEMA_VERSION);
+  data.games = data.games.map((item) => (item.id === id ? game : item));
+  await saveDb(data);
+  return game;
+}
+
+export async function deleteGame(id: number): Promise<void> {
+  const data = await loadDb();
+  if (!data.games.some((game) => game.id === id)) {
+    throw new GameError('Cette partie n’existe plus.');
+  }
+  data.games = data.games.filter((game) => game.id !== id);
+  await saveDb(data);
 }

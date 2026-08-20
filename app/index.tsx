@@ -14,6 +14,13 @@ const MENU_ITEMS = [
     typeLine: 'Instant',
   },
   {
+    title: 'Historique',
+    subtitle: 'Les parties déjà jouées, soirée par soirée.',
+    href: '/historique',
+    mana: 'white',
+    typeLine: 'Planewalker',
+  },
+  {
     title: 'Statistiques',
     subtitle: 'Résultats, classements et tendances de tes parties.',
     href: '/statistiques',
